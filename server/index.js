@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import User from "./model/User.js";
+import md5 from "md5";
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ app.post("/api/signup", async (req, res) => {
     const newUser = new User({
         userName,
         email,
-        password,
+        password:md5(password),
     });
 
     try {
@@ -57,7 +58,7 @@ app.post("/api/login", async(req, res) => {
         })
     }
        
-            const checkuser = await User.findOne({email, password});
+            const checkuser = await User.findOne({email,  password:md5(password)});
             if (checkuser) {
                 res.status(201).json({
                     success: true,
