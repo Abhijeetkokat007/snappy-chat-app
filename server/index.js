@@ -3,11 +3,27 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import User from "./model/User.js";
 import md5 from "md5";
+import { Server } from "socket.io";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+// socket ----------------->
+const io = new Server(5002, {
+    cors:{
+        origin: '*',
+    },
+})
+
+io.on('connection', (socket) => {
+    console.log("user connected");
+
+    socket.on('message', (data) => {
+        console.log(data);
+    })
+})
 
 const connectDB = async () => {
     try {
@@ -24,6 +40,15 @@ const connectDB = async () => {
     }
 };
 
+
+app.get('/sendMessage',(req,res)=> {
+    const { message} =req.query;
+    io.emit('receive', message);
+
+    res.status(200).json({message: 'message send'});
+})
+
+  
 app.post("/api/signup", async (req, res) => {
     const { userName, email, password } = req.body;
 
