@@ -2,6 +2,7 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import {io} from "socket.io-client";
 import axios from 'axios';
+import './Chat.css'
 
 const socket = io("http://localhost:5002");
 
