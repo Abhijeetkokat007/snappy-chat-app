@@ -1,16 +1,18 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react'
 import { RouterProvider, createBrowserRouter } from 'react-router-dom'
+import Home  from './views/Home/Home'
+import Login from './views/Login/Login'
 
 function App() {
+
   const router = createBrowserRouter([
     {
       path: '/',
-      element: <Home />
+      element: <Home/>
     },
     {
       path: '/login',
-      element: <Login />
+      element: <Login/>
     }
   ])
 
@@ -19,4 +21,4 @@ function App() {
   )
 }
 
-export default App;
+export default App

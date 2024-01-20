@@ -1,145 +1,97 @@
-import express from "express";
-import mongoose from "mongoose";
-import dotenv from "dotenv";
-import User from "./model/User.js";
-import md5 from "md5";
-import { Server } from "socket.io";
-import jwt from "jsonwebtoken";
-
+import dotenv from 'dotenv';
+import express from 'express';
+import md5 from 'md5';
+import mongoose from 'mongoose';
+import { Server } from 'socket.io';
 dotenv.config();
+
+import Message from './models/Message.js';
+import User from './models/User.js';
 
 const app = express();
 app.use(express.json());
 
-// socket ----------------->
-const io = new Server(5002, {
-    cors: {
-        origin: '*',
-    },
-})
-
-io.on('connection', (socket) => {
-    console.log("user connected");
-
-    socket.on('message', (data) => {
-        console.log(data);
-    })
-})
-
-const connectDB = async () => {
-    try {
-        const conn = await mongoose.connect(process.env.MONGOODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-
-        if (conn) {
-            console.log("Connected to MongoDB 😊");
-        }
-    } catch (err) {
-        console.log(err.message);
-    }
-};
-
-
-app.get('/sendMessage', (req, res) => {
-    const { message } = req.query;
-    io.emit('receive', message);
-
-    res.status(200).json({ message: 'message send' });
-})
-
-
-app.post("/api/signup", async (req, res) => {
-    const { userName, email, password } = req.body;
-
-    const newUser = new User({
-        userName,
-        email,
-        password: md5(password),
-    });
-
-    try {
-        const saveUser = await newUser.save();
-        res.status(201).json({
-            success: true,
-            data: saveUser,
-            message: "Resgistration Successful",
-            token: await newUser.generateToken(),
-            userId: newUser._id.toString(),
-        });
-    } catch (err) {
-        res.status(404).json({
-            success: false,
-            message: err.message,
-        });
-    }
+ const io = new Server(5002, {
+  cors: {
+    origin: '*',
+  },
 });
 
-app.post("/api/login", async (req, res) => {
-    const { email, password } = req.body;
+io.on('connection', (socket) => {
+  console.log('a user connected');
 
-    if (!email || !password) {
-        return res.json({
-            success: false,
-            message: "invalid email and password"
-        })
-    }
+  socket.on('message', async (data) => {
+    console.log(data);
+    io.emit('message', data); 
+    const { sender, receiver, message } = data;
+    const newMessage = new Message({
+      sender,
+      receiver,
+      message,
+    });
 
-    const checkuser = await User.findOne({ email, password: md5(password) });
-    if (checkuser) {
-       
-        if (checkuser) {
-            jwt.sign({ checkuser },
-                process.env.JWT_SECTECT_KEY,
-                {
-                    expiresIn: "30h"
-                },
-                (err, token) => {
+    await newMessage.save();
+  })
+});
 
-                    if (err) {
-                        res.status(404).json({
-                            success: false,
-                            message: "Something went wrong , please try After Some time.",
-                        })
-                    }
-                    res.status(201).json({
-                        success: true,
-                        data: checkuser,
-                        message: "login succesfull",
-                        token: token,
-                    })
-                }
-            )
+app.get('/sendMessage', (req, res) => {
+  const { message } = req.query;
+  io.emit('receive', message);
 
+  res.status(200).json({ message: 'Message sent' });
+});
 
-        }
-        else {
-            res.status(404).json({
-                success: false,
-                message: "No User Found"
-            })
-        }
-
-
-
-    }
-    else {
-        res.status(404).json({
-            success: false,
-            message: "invalid data"
-        })
-    }
-
+const connectDB = async () => {
+try{
+  const add = await mongoose.connect(process.env.MONGOODB_URI);
+  console.log(`MongoDB Connected`);
 }
-)
+catch(e){
+  console.log(e.message)
+}
+};
+connectDB();
 
+app.post('/signup', async (req, res) => {
+  const { email, password, fullName } = req.body;
+
+  try {
+    const user = await User({
+      email,
+      password: md5(password),
+      fullName
+    });
+    const savedUser = await user.save();
+
+    res.status(201).json({ data: savedUser });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;     
+
+  try {
+    const user = await User.findOne({ email, password: md5(password) });
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    res.status(200).json({ data: user, message: 'Login successful' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/users', async (req, res) => {
+  const users = await User.find({}).select('_id fullName email');
+  res.status(200).json({ data: users });
+});
 
 
 const PORT = 5001;
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
-
-connectDB();
